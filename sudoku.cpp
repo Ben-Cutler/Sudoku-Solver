@@ -8,6 +8,10 @@ const int options = boxes * boxes;   // Board is currently 1-9
 /**
 Square Class
 **/
+struct position{
+	int row;
+	int col;	
+};
 
 class square{
     bool* possibilities; // Keeps track of which numbers are possible
@@ -19,6 +23,7 @@ class square{
     int showNumber(); // If the value is known, this method shows the number
     bool checkForSolved();
     int countPossibilities();
+    int* numericOptions();
 
 };
 square ::square(){
@@ -96,7 +101,18 @@ bool square :: checkForSolved(){
     return 0;
 }
 
+int* square :: numericOptions(){
+	int* outArray = new int[countPossibilities()];
+	int counter = 0;
+	for (int i=0 ; i<options ; i++){
+		if (*(possibilities+i)){
+			*(outArray +counter) = i+1;
+			++counter;
+		}
 
+	}
+	return outArray;
+}
 /**
 Board Class
 **/
@@ -118,6 +134,7 @@ public:
     board operator =(board);
     void solveBoard();
     bool hasError();
+    position findHighPossibilitySpots();
 
 };
 board :: board(){
@@ -267,21 +284,73 @@ bool board :: done(){
 }
 void board :: solveBoard(){
     while (totalCrossHatch() || totalGridCrossHatch() ){}
+    vector<position> potentialSpots;
     if ((!done()) && (!hasError())){
         cout << "Ohh no!" << endl;
-        board testBoard = *this;
-
+        board testBoard;
+        position potentialSpots = findHighPossibilitySpots();
+        int *guesses = sudoku[potentialSpots.row][potentialSpots.col].numericOptions();
+        int amountOfGuesses = sudoku[potentialSpots.row][potentialSpots.col].countPossibilities();
+        for (int i=0 ; (i<amountOfGuesses) ; i++){
+        	testBoard = *this; // Check to make sure Deep copy works???
+        	testBoard.sudoku[potentialSpots.row][potentialSpots.col].solveVal(*(guesses+i));
+        	testBoard.solveBoard();
+        	if (testBoard.done() && !testBoard.hasError()){
+        		*this = testBoard;
+        		cout <<"Yes, this is working." << endl;
+        		return;
+        	}
+        } 
+        
     }
 }
-bool board :: hasError(){
-    for (int i=0 ; i<options ;i++){
-        for (int j = 0 ; j<options ; j++){
-            if (!(sudoku[i][j].countPossibilities())){
-                return true;
-            }
-        }
-    }
-    return false;
+bool board::hasError(){
+    /*
+    Inputs : An Int 'rowOrColNum' which will be [0,8]. It will be either a row or a column, which is number 'rowORColNum'. The string 'rowORCol' tells is of the number corresponds to a row or a col
+    Outputs: Returns a bool, 'failed' . If it returns 0 then it didn't find a duplicate value in the row or column If it returns 1 it also displays the repeated value, and column/row
+    Purpose: To test a row or column for duplicate values.
+    */
+
+
+    for (int k=0 ; k<options ; k++){
+	    for (int i=0;i<options ; i++){
+	    	for (int j=i+1 ; j<options ; j++){
+	    		if ((sudoku[i][k].showNumber() == sudoku[j][k].showNumber()) && sudoku[j][k].known && sudoku[i][k].known){
+	    			return true;
+	    		}
+	    		if ((sudoku[k][i].showNumber() == sudoku[k][j].showNumber())&& sudoku[k][j].known && sudoku[k][i].known){
+	    			return true;
+	    		}
+	    	}
+	    }
+	}
+	return false;
+} // End of Method
+
+position board :: findHighPossibilitySpots(){
+	int minSoFar =sudoku[0][0].countPossibilities();
+	position *bestspot;
+	for (int k=0 ; k<2 ; k++){
+		for (int i=0 ; i<options ; i++){
+			for (int j=0 ; j<options ; j++){
+				if (!(sudoku[i][j].known )){
+					if (k==0){
+						if (sudoku[i][j].countPossibilities() < minSoFar) 
+							minSoFar = sudoku[i][j].countPossibilities();
+					} else if (k==1){
+						if (sudoku[i][j].countPossibilities() == minSoFar){
+							// Add the i and j to the vector of possibilities
+							bestspot = new position;
+							cout << " i = " <<i << " j = " << j <<" MINSOFAR = "<<minSoFar<< endl;
+							bestspot -> row = i;
+							bestspot -> col = j;
+							return *bestspot;
+						}
+					}
+				}
+			}
+		}
+	}
 }
 board board :: operator = (board rightBoard){ //Makes a DEEP COPY
     board outBoard;

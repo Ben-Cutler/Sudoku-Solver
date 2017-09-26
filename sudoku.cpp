@@ -5,26 +5,28 @@
 using namespace std;
 const int boxes = 3; // Subgrid
 const int options = boxes * boxes;   // Board is currently 1-9
+
+
 /**
 Square Class
 **/
 struct position{
 	int row;
-	int col;	
+	int col;
 };
 
 class square{
     bool* possibilities; // Keeps track of which numbers are possible
     public:
+    square(); // Constructor
+    ~square(); // Destructor
     bool known; // If there is only one option in the possibilities, then it is known.
     void setVal (int key); // Sets a value in the square to false/impossible.
     void solveVal(int key); //Sets every value except the key value to true, and the rest to false. Also trips 'known' to true.
-    square(); // Constructor
     int showNumber(); // If the value is known, this method shows the number
-    bool checkForSolved();
-    int countPossibilities();
-    int* numericOptions();
-
+    bool checkForSolved(); // Check if square is known yet
+    int countPossibilities(); // Counts the number of possible values
+    int* numericOptions(); // Returns an array of the values that could be stored in the square
 };
 square ::square(){
     /*
@@ -37,6 +39,9 @@ square ::square(){
         *(possibilities+i) = true; // Defaults each value to true.
     }
 };
+square :: ~square(){
+    delete possibilities;
+}
 void square :: setVal(int key){
      /*
     Inputs : An integer 'key', which corresponds to a number that has been ruled 'impossible' and can be eliminated
@@ -78,6 +83,10 @@ int  square :: showNumber(){
     return 0;
 }
 int  square :: countPossibilities(){
+    /*
+    Input: None
+    Output: Returns how many numbers are unknown in the square
+    */
     int counter = 0;
     for (int i=0 ; i<options ; ++i){
         if (*(possibilities +i)){ // Finds all the  'trues' in the possibilities
@@ -89,8 +98,7 @@ int  square :: countPossibilities(){
 bool square :: checkForSolved(){
     /*
     Inputs: None
-    Outputs: True if there's only
-
+    Outputs: True if there's only  one value
     */
     int counter = countPossibilities();
     if (counter ==1){
@@ -100,8 +108,12 @@ bool square :: checkForSolved(){
     }
     return 0;
 }
-
 int* square :: numericOptions(){
+    /*
+    Inputs: None
+    Outputs: Returns a pointer to an array, that array has the numbers that are 'legal' in the square
+    Purpose: This array is looped over if we need to guess the values that could be there.
+    */
 	int* outArray = new int[countPossibilities()];
 	int counter = 0;
 	for (int i=0 ; i<options ; i++){
@@ -113,6 +125,8 @@ int* square :: numericOptions(){
 	}
 	return outArray;
 }
+
+
 /**
 Board Class
 **/
@@ -122,20 +136,18 @@ class board {
     void printANumFreeRow();
     void printANumRow(int);
     bool crossHatch(int,int);
-
 public:
-    board();
-    void fillBoard();
-    void displayboard();
-    bool totalCrossHatch();
-    bool subGridCrossHatch(int, int);
-    bool totalGridCrossHatch();
-    bool done();
-    board operator =(board);
-    void solveBoard();
-    bool hasError();
-    position findHighPossibilitySpots();
-
+    board(); // Constructor
+    void fillBoard(); // Fills the board with data from user
+    void displayboard(); // prints the board
+    bool totalCrossHatch(); // Looks at all rows and columns to find numbers by process of elimination
+    bool subGridCrossHatch(int, int); // looks at a specific sub grid, and checks for numbers by process of elimination
+    bool totalGridCrossHatch(); // Looks at all subgrids
+    bool done(); // Check if the board is done or not
+    void solveBoard(); // 'Main' function, solves the board by process of elimination and some guess and check
+    bool hasError(); // Checks if the board has an error (such as a duplicate)
+    void deepCopy(board); // Makes a deep copy of a board
+    position findHighPossibilitySpots(); // Finds spots that are unknown, but have very few (usually 2) potential values.
 };
 board :: board(){
 
@@ -143,7 +155,6 @@ board :: board(){
     for(int i = 0; i < options; ++i)
         sudoku[i] = new square[options]; // for each sudoku pointer - point it at a new 1xN array
 };
-
 void board :: fillBoard(){
     /*
     Purpose : To fill board with the user's numbers.
@@ -185,7 +196,7 @@ void board :: printANumFreeRow() {
 }
 void board :: printANumRow(int num){
     /*
-    Inputs : Takes in no data, but references the board
+    Inputs : Takes in a num, corresponding to the row that's being printed [0-8]
     Outputs : Displays a row which has numbers in it.
     Purpose : To display rows which have numbers in them
     */
@@ -199,7 +210,9 @@ void board :: printANumRow(int num){
 }
 bool board :: crossHatch( int row, int col){
     /*
-    add comments lat3r
+    Inputs: A numbered Row and a numbered column.
+    Outputs: If a value was updated via crosshatch, then a true
+    Purpose: To look through the rows and column, and eliminate the possibility that two numbers share a row and a column.
     */
     bool foundSome = false;
     int key = (sudoku[row][col]).showNumber();
@@ -217,15 +230,22 @@ bool board :: crossHatch( int row, int col){
     return foundSome;
 }
 bool board :: totalCrossHatch(){
-    bool foundOne = false;
+    /*
+    Inputs : None
+    Outputs: True if a 'CrossHatch' method turns up a value.
+    Purpose: To look through each row and each column, if one of the rows/Cols returns that a value was found, then it returns true (To reset)
+    */
+
     for (int i=0 ; i<options ; ++i){
         for (int j=0 ; j<options; ++j){
            if (sudoku[i][j].known){
-                foundOne += crossHatch(i,j);
+                if (crossHatch(i,j)){
+                    return true ;
+                }
            }
         }
     }
-    return foundOne;
+    return false;
 }
 bool board :: subGridCrossHatch(int gridRow, int gridCol){
     /*
@@ -260,50 +280,66 @@ bool board :: subGridCrossHatch(int gridRow, int gridCol){
             }
         }
     }
+
     return foundSome;
 }
 bool board :: totalGridCrossHatch(){
-    bool foundSome = false;
+    /*
+    Inputs : None
+    Outputs: True if a 'subGridCrossHatch' method turns up a value.
+    Purpose: To look through each subgrid, if one of the subgrids returns that a value was found, then it returns true (To reset)
+    */
     for (int i=0 ; i<boxes ; ++i){
         for (int j=0 ; j<boxes ; ++j){
-            foundSome += subGridCrossHatch(i,j);
-        }
-    }
-    return foundSome;
-}
-bool board :: done(){
-    bool done = true;
-    for (int i=0 ; i<options ; i++){
-        for (int j=0 ; j<options ; j++){
-            if (! (sudoku[i][j].known)){
-                done = false;
+            if (subGridCrossHatch(i,j)){
+                return true;
             }
         }
     }
-    return done;
+    return false;
+}
+bool board :: done(){
+    /*
+    Inputs: None
+    Outputs: Returns true if there are no unknown values in the sudoku board.
+    Purpose: To determine if there are any unknown values in the sudoku board.
+
+    */
+
+    for (int i=0 ; i<options ; i++){
+        for (int j=0 ; j<options ; j++){
+            if (! (sudoku[i][j].known)){ // Loop through the sudoku board and check the known value
+                return false;
+            }
+        }
+    }
+    return true;
 }
 void board :: solveBoard(){
-    while (totalCrossHatch() || totalGridCrossHatch() ){}
-    vector<position> potentialSpots;
-    if ((!done()) && (!hasError())){
-        cout << "Ohh no!" << endl;
-        board testBoard;
-        position potentialSpots = findHighPossibilitySpots();
-        int *guesses = sudoku[potentialSpots.row][potentialSpots.col].numericOptions();
-        int amountOfGuesses = sudoku[potentialSpots.row][potentialSpots.col].countPossibilities();
-        for (int i=0 ; (i<amountOfGuesses) ; i++){
-        	testBoard = *this; // Check to make sure Deep copy works???
-        	testBoard.sudoku[potentialSpots.row][potentialSpots.col].solveVal(*(guesses+i));
-        	testBoard.solveBoard();
-        	if (testBoard.done() && !testBoard.hasError()){
-        		*this = testBoard;
-        		cout <<"Yes, this is working." << endl;
+    /*
+    Inputs: None (relies on sudoku instance having a few values though)
+    Outputs: None
+    Purpose: To eliminate possibilities via crosshatching, then make an "educated guess" and recursively solve the puzzle with these guesses and checks.
+    */
+    while (totalCrossHatch() || totalGridCrossHatch() ){} // Try to solve it via crosshatching alone. Sometimes this alone is enough.
+    if ((!done()) && (!hasError())){ // If it exhausts crosshatching and it's not done
+        board testBoard; // Make a board that we can 'test out'
+        position potentialSpots = findHighPossibilitySpots(); // find a spot of where to guess
+        int *guesses = sudoku[potentialSpots.row][potentialSpots.col].numericOptions(); // An array of numbers that count be the solution, and will be guessed
+        int amountOfGuesses = sudoku[potentialSpots.row][potentialSpots.col].countPossibilities(); // Size of the 'guesses array'
+        for (int i=0 ; (i<amountOfGuesses) ; i++){ // Loop through guesses array
+        	testBoard.deepCopy( *this); // Make a deep copy of 'this' into the test board
+        	testBoard.sudoku[potentialSpots.row][potentialSpots.col].solveVal(*(guesses+i)); // Apply the guess to the test board
+        	testBoard.solveBoard(); // run the solve board method on the test board
+        	if (testBoard.done() && !testBoard.hasError()){ // If the  testboard is done & error free, we are finished
+        		(*this).deepCopy( testBoard); // we make 'this' a deep copy of the testboard
         		return;
         	}
-        } 
-        
+        	// If this guess wasn't right, the for loop goes onto the other guesses. Ultimately, one of the guesses has to be right.
+        }
+
     }
-}
+};
 bool board::hasError(){
     /*
     Inputs : An Int 'rowOrColNum' which will be [0,8]. It will be either a row or a column, which is number 'rowORColNum'. The string 'rowORCol' tells is of the number corresponds to a row or a col
@@ -326,22 +362,45 @@ bool board::hasError(){
 	}
 	return false;
 } // End of Method
+void board :: deepCopy(board rightBoard){
+    /*
+    Inputs: A board class
+    Outputs: void
+    Purpose: To make 'this' a DEEP COPY of the 'rightboard'.
+    */
+    board outBoard;
+    for (int i=0;i<options;++i){
+        for(int j=0 ; j<options ; ++j){
+            if ((rightBoard.sudoku[i][j]).known){
+                // This loops through the right board, and uses the 'solveVal' method on each of the numbers that are known on the rightboard
+                outBoard.sudoku[i][j].solveVal(rightBoard.sudoku[i][j].showNumber() );
+            }
+        }
+    }
+    while (outBoard.totalCrossHatch() || outBoard.totalGridCrossHatch()){} // Then, it figures out which numbers in the square are impossible
+    sudoku =  outBoard.sudoku; // Finaly, "this"'s sudoku becomes the board we modified
 
+}
 position board :: findHighPossibilitySpots(){
-	int minSoFar =sudoku[0][0].countPossibilities();
-	position *bestspot;
+    /*
+    Inputs : None
+    Outputs: A 'position class' which has the coordinates of a square with the smallest number of possible outcomes.
+    Purpose: To find a square which has the lowest number of possible values that could occupy that square (usually 2), and return the coordinates of that square.
+    */
+
+	int minSoFar =options; // Default minimum is an empty square.
+	position *bestspot;    //The position that gets returned
 	for (int k=0 ; k<2 ; k++){
 		for (int i=0 ; i<options ; i++){
 			for (int j=0 ; j<options ; j++){
 				if (!(sudoku[i][j].known )){
-					if (k==0){
-						if (sudoku[i][j].countPossibilities() < minSoFar) 
+					if (k==0){ // On the first iteration the method finds the lowest number of possibilities.
+						if (sudoku[i][j].countPossibilities() < minSoFar)
 							minSoFar = sudoku[i][j].countPossibilities();
-					} else if (k==1){
+					} else if (k==1){ // On the second iteration, it returns the first square it finds with that number of possibilities.
 						if (sudoku[i][j].countPossibilities() == minSoFar){
-							// Add the i and j to the vector of possibilities
+							// If it's a min square, it returns it
 							bestspot = new position;
-							cout << " i = " <<i << " j = " << j <<" MINSOFAR = "<<minSoFar<< endl;
 							bestspot -> row = i;
 							bestspot -> col = j;
 							return *bestspot;
@@ -352,26 +411,13 @@ position board :: findHighPossibilitySpots(){
 		}
 	}
 }
-board board :: operator = (board rightBoard){ //Makes a DEEP COPY
-    board outBoard;
-    for (int i=0;i<options;++i){
-        for(int j=0 ; j<options ; ++j){
-            if ((rightBoard.sudoku[i][j]).known){
-                outBoard.sudoku[i][j].solveVal(rightBoard.sudoku[i][j].showNumber() );
-            }
-        }
-    }
-    while (outBoard.totalCrossHatch() || outBoard.totalGridCrossHatch()){}
-    return outBoard;
-}
+
 
 int main(){
     board myBoard;
     myBoard.fillBoard();
     myBoard.solveBoard();
-    if (myBoard.done()){
-        cout <<"DONE! " << endl;
-    }
     myBoard.displayboard();
+
     return 0;
 }

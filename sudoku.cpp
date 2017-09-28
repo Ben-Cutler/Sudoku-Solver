@@ -3,7 +3,7 @@
 
 
 using namespace std;
-const int boxes = 3; // Subgrid
+const int boxes = 3; // Subgrid size
 const int options = boxes * boxes;   // Board is currently 1-9
 
 
@@ -48,7 +48,7 @@ void square :: setVal(int key){
     Outputs : void
     Purpose : To eliminate a number as a possibility.
     */
-    *(possibilities + key -1) = false; // Sets the 'key-1' item in the possibility array to false;
+    *(possibilities + key -1) = false; // We need to set key-1 to false since arrays start at 0, not 1
     return;
 }
 void square :: solveVal(int key){
@@ -58,7 +58,7 @@ void square :: solveVal(int key){
     Purpose : To set a number as a the only possible one that could be there.
     */
     if (!key){
-        return; // If the key is 0 this function does nothing.
+        return; // If the key is 0 this function does nothing. We need this because unknown values are defaulted to 0
     }
     for (int i=0 ; i<options ; ++i){
         if (i != (key)){
@@ -136,18 +136,19 @@ class board {
     void printANumFreeRow();
     void printANumRow(int);
     bool crossHatch(int,int);
-public:
-    board(); // Constructor
-    void fillBoard(); // Fills the board with data from user
-    void displayboard(); // prints the board
+    bool hasError(); // Checks if the board has an error (such as a duplicate)
+    void deepCopy(board); // Makes a deep copy of a board
+    position findHighPossibilitySpots(); // Finds spots that are unknown, but have very few (usually 2) potential values.
     bool totalCrossHatch(); // Looks at all rows and columns to find numbers by process of elimination
     bool subGridCrossHatch(int, int); // looks at a specific sub grid, and checks for numbers by process of elimination
     bool totalGridCrossHatch(); // Looks at all subgrids
     bool done(); // Check if the board is done or not
+public:
+    board(); // Constructor
+    void fillBoard(); // Fills the board with data from user
+    void displayboard(); // prints the board
     void solveBoard(); // 'Main' function, solves the board by process of elimination and some guess and check
-    bool hasError(); // Checks if the board has an error (such as a duplicate)
-    void deepCopy(board); // Makes a deep copy of a board
-    position findHighPossibilitySpots(); // Finds spots that are unknown, but have very few (usually 2) potential values.
+
 };
 board :: board(){
 
@@ -190,8 +191,18 @@ void board :: printANumFreeRow() {
     Output : A bar of text
     Purpose :This just prints a short row which is a delimiter between 3x3 grids.
     */
+    cout << '+';
+    for (int i=0 ; i<=boxes ; i++){
 
-    cout << "+-------+-------+-------+" << endl;
+        for (int i=0 ; i<2 * boxes -1 ; i++){
+                cout << '-';
+        }
+        cout << '+';
+    }
+    cout << endl;
+
+
+    //cout << "+-------+-------+-------+" << endl;
 
 }
 void board :: printANumRow(int num){
@@ -204,7 +215,11 @@ void board :: printANumRow(int num){
        if (!( i%boxes )){
              cout << "| "; // There should be a bar before the 0th value, the 3rd value, the 6th integer
        }
+       if ((sudoku[num][i]).showNumber() > 10){
+            cout << char ( (sudoku[num][i]).showNumber() ) << ' '; // prints the board and a space char
+       }else{
         cout << (sudoku[num][i]).showNumber() << ' '; // prints the board and a space char
+       }
     }
     cout << '|' << endl; // There needs to be a bar at the very end of the row
 }
